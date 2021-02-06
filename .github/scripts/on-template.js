@@ -26,7 +26,9 @@ const PACKAGE_NAME = `@${GITHUB_REPOSITORY.toLowerCase()}`
  */
 
 package.name = PACKAGE_NAME
-package.homepage = package.homepage.replace(TEMPLATE_GITHUB_REPOSITORY, GITHUB_REPOSITORY)
+package.homepage = `https://github.com/${GITHUB_REPOSITORY}#readme`
+package.repository.url = `https://github.com/${GITHUB_REPOSITORY}.git`
+package.bugs.url = `https://github.com/${GITHUB_REPOSITORY}/issues`
 writeFileSync('./package.json', JSON.stringify(package, undefined, 2), { encoding: 'utf8' })
 
 /**
@@ -51,7 +53,19 @@ const newReadme = readme
 writeFileSync('./README.md', newReadme, { encoding: 'utf8' })
 
 /**
+ * Security.md
+ */
+const security = readFileSync('./SECURITY.md', { encoding: 'utf8' })
+const newSecurity = security
+  .split(TEMPLATE_PACKAGE_NAME)
+  .join(PACKAGE_NAME)
+  .split(TEMPLATE_GITHUB_REPOSITORY)
+  .join(GITHUB_REPOSITORY)
+
+writeFileSync('./README.md', newSecurity, { encoding: 'utf8' })
+
+/**
  * CLEAN UP
  */
-unlinkSync('./on-template.js')
+unlinkSync('./.github/scripts/on-template.js')
 unlinkSync('./.github/workflows/on-template.yml')
