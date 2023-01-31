@@ -11,11 +11,9 @@ updates:
       interval: "daily"
     labels:
       - "dependencies"
-      - "automerge"
   - package-ecosystem: "github-actions"
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
     labels:
       - "dependencies"
-      - "automerge"
