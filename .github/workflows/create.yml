@@ -1,0 +1,28 @@
+name: Create Project
+
+on:
+  push:
+
+jobs:
+  create:
+    name: Create Project
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx zx instantiate.mjs
+      - run: 
+          name: Commit changes
+          run: |
+        git config --global user.name 'Jesse Wright'
+        git config --global user.email '63333554+jeswr@users.noreply.github.com'
+        git checkout -b chore/instantiate
+        git add .
+        git commit -am "Automatically instantiate" -n
+        git push --set-upstream origin chore/instantiate
+        gh pr create --title "Automatically instantiate" --body "This PR was automatically created to instantiate the project."
+    env:
+      GH_TOKEN: ${{ github.token }}
