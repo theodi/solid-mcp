@@ -8,11 +8,8 @@ Template repo for my Typescript projects
 
 ## Usage
 When this repository is used as a template, you will need to do the following:
- - Provide secrets tokens for github (`GH_TOKEN`) and NPM (`NPM_TOKEN`)
+ - Provide secrets tokens fo NPM (`NPM_TOKEN`)
    NPM tokens (`NPM_TOKEN`) should be automation tokens generated at https://www.npmjs.com/settings/[user]/tokens/
-   Github tokens (`GH_TOKEN`) should be generated at https://github.com/settings/tokens/new?scopes=repo
-   Secrets should be added at https://github.com/jeswr/[repository-name]/settings/secrets/actions
- - Fill in missing entries in the package.json
 
 ## License
 ©2021–present
