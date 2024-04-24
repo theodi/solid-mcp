@@ -19,8 +19,8 @@ jobs:
           git config --global user.email '63333554+jeswr@users.noreply.github.com'
           git checkout -b chore/instantiate
           git add .
-          git commit -am "Automatically instantiate" -n
+          git commit -am "chore: automatically instantiate" -n
           git push --set-upstream origin chore/instantiate
-          gh pr create --title "Automatically instantiate" --body "This PR was automatically created to instantiate the project."
+          gh pr create --title "chore: automatically instantiate" --body "This PR was automatically created to instantiate the project."
     env:
       GH_TOKEN: ${{ github.token }}
