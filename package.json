@@ -1,87 +1,38 @@
 {
   "name": "@theodi/solid-mcp",
-  "version": "0.0.0-development",
-  "description": "",
-  "main": "dist/index.js",
-  "types": "dist/index.d.js",
-  "directories": {
-    "lib": "lib"
-  },
-  "files": [
-    "dist"
-  ],
+  "version": "1.0.0",
+  "description": "An MCP server with tools to interact with a Solid Pod.",
+  "main": "dist/server.js",
+  "type": "module",
   "scripts": {
-    "test:coverage": "npm test -- --coverage",
-    "test:badges": "npm run test:coverage  && jest-coverage-badges",
-    "test": "jest",
-    "lint": "eslint lib/* __tests__/* --ext .ts",
-    "lint:fix": "eslint lib/* __tests__/* --ext .ts --fix",
     "build": "tsc",
-    "prepare": "tsc",
-    "semantic-release": "semantic-release"
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/theodi/solid-mcp"
-  },
-  "keywords": [],
-  "author": "Jesse Wright <https://github.com/jeswr/>",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/theodi/solid-mcp/issues"
-  },
-  "homepage": "https://github.com/theodi/solid-mcp/README.md",
-  "devDependencies": {
-    "@types/jest": "^30.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.37.0",
-    "@typescript-eslint/parser": "^8.36.0",
-    "eslint": "^9.31.0",
-    "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.32.0",
-    "jest": "^30.0.4",
-    "pre-commit": "^1.2.2",
-    "semantic-release": "^24.2.7",
-    "ts-jest": "^29.4.0",
-    "typescript": "^5.8.3"
-  },
-  "jest": {
-    "preset": "ts-jest",
-    "collectCoverage": true,
-    "coverageReporters": [
-      "json-summary",
-      "text",
-      "lcov"
-    ],
-    "coverageThreshold": {
-      "global": {
-        "branches": 100,
-        "functions": 100,
-        "lines": 100,
-        "statements": 100
-      }
-    }
-  },
-  "pre-commit": [
-    "lint",
-    "build",
-    "test"
+  "keywords": [
+    "solid",
+    "mcp",
+    "typescript"
   ],
-  "release": {
-    "branches": [
-      "main",
-      "+([0-9])?(.{+([0-9]),x}).x",
-      "next",
-      {
-        "name": "alpha",
-        "prerelease": true
-      },
-      {
-        "name": "beta",
-        "prerelease": true
-      }
-    ]
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@inrupt/solid-client": "^2.0.0",
+    "@inrupt/solid-client-authn-node": "^2.0.0",
+    "@modelcontextprotocol/sdk": "^1.15.0",
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "jsonwebtoken": "^9.0.2",
+    "node-fetch": "^3.3.2",
+    "zod": "^3.23.8"
   },
-  "publishConfig": {
-    "access": "public"
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.14.2",
+    "@types/node-fetch": "^2.6.11",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.15.5",
+    "typescript": "^5.4.5"
   }
 }
