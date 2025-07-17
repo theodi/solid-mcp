@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "solid_pod_tools": {
+      "command": "node",
+      "args": [
+        "/Users/kwaku/solid-mcp-latest/dist/server.Test.js" 
+      ],
+      "options": {
+        "cwd": "/Users/kwaku/solid-mcp-latest"
+      }
+    }
+  }
+}
