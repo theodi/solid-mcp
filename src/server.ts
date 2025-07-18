@@ -1,6 +1,11 @@
-import 'dotenv/config'; // Loads environment variables from a .env file into process.env
-import * as http from 'http'; // Import the standard Node.js HTTP module
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import 'dotenv/config';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  CallToolResult,
+} from '@modelcontextprotocol/sdk/types.js';
 import { SolidCssMcpService } from './services/solid.service.js';
 import {
   registerSolidLoginTool,
@@ -10,65 +15,106 @@ import {
   registerDeleteResourceTool,
 } from './tools/solid.tools.js';
 
-// --- Server Class for Better Organization ---
+// --- Adapter to bridge old tool registration with new server ---
+class McpToolRegistry {
+  private tools: Map<string, any> = new Map();
 
-class SolidMcpServer {
-  private mcpServer: McpServer;
-  private httpServer: http.Server;
+  tool(name: string, description: string, inputSchema: any, handler: (args: any) => Promise<CallToolResult>): void {
+    this.tools.set(name, { name, description, inputSchema, handler });
+  }
+
+  getTool(name: string): any {
+    return this.tools.get(name);
+  }
+
+  listTools(): any[] {
+    return Array.from(this.tools.values()).map(t => ({
+      name: t.name,
+      description: t.description,
+      inputSchema: t.inputSchema,
+    }));
+  }
+}
+
+// --- Main Server Implementation ---
+class SolidPodMcpServer {
+  private server: Server;
   private solidService: SolidCssMcpService;
-  private port: number;
+  private toolRegistry: McpToolRegistry;
 
-  constructor(port: number) {
-    this.port = port;
+  constructor() {
     this.solidService = new SolidCssMcpService();
-    
-    this.mcpServer = new McpServer({
-      name: 'solid-pod-mcp-server',
-      version: '0.0.0-development',
-      
-      anthropic: {
-        apiKey: process.env.ANTHROPIC_API_KEY,
-      },
-      openai: {
-        apiKey: process.env.OPENAI_API_KEY,
-      },
-    });
+    this.toolRegistry = new McpToolRegistry();
 
-    // The MCP Server request handler is likely called 'listener' or needs to be adapted
-    // to the http.createServer signature. We'll use a wrapper for compatibility.
-    this.httpServer = http.createServer((req, res) => {
-        (this.mcpServer as any).listener(req, res);
-    });
+    this.server = new Server(
+      {
+        name: 'solid-pod-tools-server',
+        version: '1.0.1',
+      },
+      {
+        capabilities: {
+          tools: {},
+        },
+      }
+    );
 
-    this.registerTools();
+    this.registerAllTools();
+    this.setupRequestHandlers();
+    this.setupErrorHandling();
   }
 
-  private registerTools(): void {
-    console.log('🔷 Registering Solid Pod tools...');
-    
-    registerSolidLoginTool(this.mcpServer, this.solidService);
-    registerReadResourceTool(this.mcpServer, this.solidService);
-    registerWriteTextResourceTool(this.mcpServer, this.solidService);
-    registerListContainerTool(this.mcpServer, this.solidService);
-    registerDeleteResourceTool(this.mcpServer, this.solidService);
-    
-    console.log('✅ All Solid Pod tools registered.');
+  private registerAllTools(): void {
+    console.error('🔷 Registering Solid Pod tools...');
+    registerSolidLoginTool(this.toolRegistry, this.solidService);
+    registerReadResourceTool(this.toolRegistry, this.solidService);
+    registerWriteTextResourceTool(this.toolRegistry, this.solidService);
+    registerListContainerTool(this.toolRegistry, this.solidService);
+    registerDeleteResourceTool(this.toolRegistry, this.solidService);
+    console.error('✅ All Solid Pod tools registered.');
   }
 
-  public start(): void {
-    this.httpServer.listen(this.port, () => {
-        console.log(`✅ MCP Server with Solid Tools is running and listening on http://localhost:${this.port}`);
+  private setupRequestHandlers(): void {
+    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+      return {
+        tools: this.toolRegistry.listTools(),
+      };
     });
+
+    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const { name, arguments: args } = request.params;
+      const tool = this.toolRegistry.getTool(name);
+
+      if (!tool) {
+        throw new Error(`Unknown tool: ${name}`);
+      }
+
+      console.error(`--> Received call for tool: ${name}`);
+      return tool.handler(args || {});
+    });
+  }
+
+  private setupErrorHandling(): void {
+    this.server.onerror = (error) => {
+      console.error('[MCP Server Error]', error);
+    };
+  }
+
+  public async start(): Promise<void> {
+    const transport = new StdioServerTransport();
+    await this.server.connect(transport);
+    console.error('✅ MCP Server started and connected successfully via Stdio.');
   }
 }
 
 // --- Application Entry Point ---
-
-function main() {
-  const PORT = 3030;
-  const mcpServer = new SolidMcpServer(PORT);
-  mcpServer.start();
+async function main() {
+  try {
+    const server = new SolidPodMcpServer();
+    await server.start();
+  } catch (error) {
+    console.error('Failed to start MCP server:', error);
+    process.exit(1);
+  }
 }
 
-// Run the main function to start the server
 main();

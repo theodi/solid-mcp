@@ -1,9 +1,10 @@
-import fetch from 'node-fetch';
+import fetch, { Blob } from 'node-fetch';
 import {
   generateDpopKeyPair,
   createDpopHeader,
   buildAuthenticatedFetch,
 } from '@inrupt/solid-client-authn-core';
+import * as solidClient from '@inrupt/solid-client';
 
 // --- TYPE DEFINITIONS ---
 type AuthenticatedFetch = any;
@@ -39,31 +40,22 @@ export class SolidCssMcpService {
   }
 
   async authenticate(email: string, password: string, oidcIssuer: string): Promise<AuthenticatedFetch> {
-    console.log('🔷 1. Authenticating...');
+    console.error('🔷 Authenticating...');
     const cssBase = oidcIssuer;
-    
-    console.log('   a. Discovering Account API…');
     const indexRes = await fetch(`${cssBase}.account/`);
     const { controls: indexControls } = (await indexRes.json()) as CssAccountApiResponse;
-
-    console.log('   b. Logging in to Account API…');
     const loginRes = await fetch(indexControls.password.login, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
     const { authorization } = (await loginRes.json()) as CssAccountApiResponse;
-    console.log('   ✅ Account API auth token acquired.');
-
     const authIndexRes = await fetch(`${cssBase}.account/`, {
       headers: { authorization: `CSS-Account-Token ${authorization!}` },
     });
     const { controls: authControls } = (await authIndexRes.json()) as CssAccountApiResponse;
-    
     const username = email.split('@')[0];
     const webId = `${cssBase}${username}/profile/card#me`;
-
-    console.log('   c. Requesting client credentials for WebID:', webId);
     const clientCredRes = await fetch(authControls.account.clientCredentials, {
       method: 'POST',
       headers: {
@@ -73,13 +65,9 @@ export class SolidCssMcpService {
       body: JSON.stringify({ name: 'mcp-demo-token', webId }),
     });
     const { id: clientId, secret: clientSecret } = (await clientCredRes.json()) as CssAccountApiResponse;
-    console.log('   ✅ Client credentials acquired.');
-
     const dpopKey = await generateDpopKeyPair();
     const authString = `${encodeURIComponent(clientId!)}:${encodeURIComponent(clientSecret!)}`;
     const tokenUrl = `${cssBase}.oidc/token`;
-
-    console.log('   d. Requesting OIDC access token…');
     const tokenRes = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
@@ -90,10 +78,37 @@ export class SolidCssMcpService {
       body: 'grant_type=client_credentials&scope=webid',
     });
     const { access_token: accessToken } = (await tokenRes.json()) as OidcTokenResponse;
-    console.log('   ✅ OIDC access token acquired.');
-
     this.authFetch = await buildAuthenticatedFetch(accessToken, { dpopKey });
-    console.log('✅ Authentication complete.');
+    console.error('✅ Authentication complete. Session is active.');
     return this.authFetch;
+  }
+
+  async readResource(resourceUrl: string): Promise<string> {
+    const authFetch = this.getAuthFetch();
+    const file = await solidClient.getFile(resourceUrl, { fetch: authFetch });
+    return file.text();
+  }
+
+  async writeResource(resourceUrl: string, content: string, contentType: string = 'text/plain'): Promise<string> {
+    const authFetch = this.getAuthFetch();
+    await solidClient.overwriteFile(
+      resourceUrl,
+      new Blob([content], { type: contentType }),
+      { fetch: authFetch }
+    );
+    return `✅ Successfully wrote to ${resourceUrl}`;
+  }
+
+  async listContainer(containerUrl: string): Promise<string> {
+    const authFetch = this.getAuthFetch();
+    const containerDataset = await solidClient.getSolidDataset(containerUrl, { fetch: authFetch });
+    const containedResources = solidClient.getContainedResourceUrlAll(containerDataset);
+    return `Resources in ${containerUrl}:\n${containedResources.join('\n')}`;
+  }
+
+  async deleteResource(resourceUrl: string): Promise<string> {
+    const authFetch = this.getAuthFetch();
+    await solidClient.deleteFile(resourceUrl, { fetch: authFetch });
+    return `✅ Successfully deleted ${resourceUrl}`;
   }
 }
