@@ -19,6 +19,7 @@ OPENAI_API_KEY="your-openai-api-key-here"
 
 ## How to Use with Claude AI Desktop
 To have the Claude AI Desktop application launch and use this custom tool server, you must update its configuration file. The following JSON tells the app how to start your compiled server script.
+
 ### claude_desktop_config.json:
 ```json
 {
@@ -41,7 +42,7 @@ To have the Claude AI Desktop application launch and use this custom tool server
 ## Tool Reference & Usage Examples
 The service exposes a suite of tools for interacting with a Solid Pod. The standard workflow is to first call solid_login to create an authenticated session. The AI will then automatically use the sessionId from that login for all subsequent tool calls within the same conversation.
 
-### solid_login
+### Solid Login
 Description: Logs into a Solid Pod to establish a secure session. This must be the first command you give.
 email (string): The email for the Solid Pod account.
 password (string): The password for the account.
@@ -50,7 +51,7 @@ oidcIssuer (string): The base URL of the Solid server.
 #### Example Command in Claude Desktop:
 Log me into my Solid Pod. My email is kwaku@theodi.org, my password is password, and the server is at http://localhost:3000/.
 
-### write_text_resource
+### Write Resource
 Description: Writes or overwrites a text-based file (e.g., .txt, .json) to a specified location on the Solid Pod.
 sessionId (string): The active session ID (provided automatically by the AI after login).
 resourceUrl (string): The full URL where the file should be saved.
@@ -60,7 +61,7 @@ content (string): The text content to be written to the file.
 Example Command in Claude Desktop:
 Using my current session, create a new file in my private folder at http://localhost:3000/kwaku/private/ai-note.txt with the content "This note was written by Claude."
 
-### read_resource
+### Read Resource
 Description: Reads and returns the text content of a specified resource from the Solid Pod.
 sessionId (string): The active session ID.
 resourceUrl (string): The full URL of the file to read.
@@ -68,7 +69,7 @@ resourceUrl (string): The full URL of the file to read.
 #### Example Command in Claude Desktop:
 Can you read the contents of the file http://localhost:3000/kwaku/private/ai-note.txt for me?
 
-### update_rdf_resource
+### Update RDF Resource
 Description: Updates a specific data property (a "predicate") for a specific entry (a "Thing") within a structured RDF file (like a .ttl file).
 sessionId (string): The active session ID.
 resourceUrl (string): The URL of the RDF file (e.g., .../profile.ttl).
@@ -79,7 +80,7 @@ value (string): The new value for the property.
 #### Example Command in Claude Desktop:
 Please update my profile at http://localhost:3000/kwaku/private/profile.ttl. For the entry http://localhost:3000/kwaku/private/profile.ttl#me, set the http://xmlns.com/foaf/0.1/name property to "Kwaku A."
 
-### grant_access
+### Grant Access
 Description: Grants specific access permissions for a resource to another person (identified by their WebID).
 sessionId (string): The active session ID.
 resourceUrl (string): The URL of the resource to share.
@@ -97,7 +98,7 @@ containerUrl (string): The URL of the container to list.
 Show me all the files in my private container.
 (The AI should be able to infer the container URL from the login context).
 
-### delete_resource
+### Delete Resource
 Description: Permanently deletes a file or an empty container from the Solid Pod.
 sessionId (string): The active session ID.
 resourceUrl (string): The full URL of the resource to delete.
