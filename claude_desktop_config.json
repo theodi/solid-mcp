@@ -3,7 +3,7 @@
     "solid_pod_tools": {
       "command": "node",
       "args": [
-        "/Users/kwaku/solid-mcp-latest/dist/server.Test.js" 
+        "/Users/kwaku/solid-mcp-latest/dist/server.js" 
       ],
       "options": {
         "cwd": "/Users/kwaku/solid-mcp-latest"
