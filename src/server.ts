@@ -13,7 +13,10 @@ import {
   registerWriteTextResourceTool,
   registerListContainerTool,
   registerDeleteResourceTool,
+  registerUpdateRdfResourceTool,
+  registerGrantAccessTool,
 } from './tools/solid.tools.js';
+import logger from './logger.js';
 
 // --- Adapter to bridge old tool registration with new server ---
 class McpToolRegistry {
@@ -49,7 +52,7 @@ class SolidPodMcpServer {
     this.server = new Server(
       {
         name: 'solid-pod-tools-server',
-        version: '1.0.1',
+        version: '1.0.2',
       },
       {
         capabilities: {
@@ -64,13 +67,15 @@ class SolidPodMcpServer {
   }
 
   private registerAllTools(): void {
-    console.error('🔷 Registering Solid Pod tools...');
-    registerSolidLoginTool(this.toolRegistry, this.solidService);
-    registerReadResourceTool(this.toolRegistry, this.solidService);
-    registerWriteTextResourceTool(this.toolRegistry, this.solidService);
-    registerListContainerTool(this.toolRegistry, this.solidService);
-    registerDeleteResourceTool(this.toolRegistry, this.solidService);
-    console.error('✅ All Solid Pod tools registered.');
+    logger.info('🔷 Registering Solid Pod tools...');
+    registerSolidLoginTool(this.toolRegistry as any, this.solidService);
+    registerReadResourceTool(this.toolRegistry as any, this.solidService);
+    registerWriteTextResourceTool(this.toolRegistry as any, this.solidService);
+    registerListContainerTool(this.toolRegistry as any, this.solidService);
+    registerDeleteResourceTool(this.toolRegistry as any, this.solidService);
+    registerUpdateRdfResourceTool(this.toolRegistry as any, this.solidService);
+    registerGrantAccessTool(this.toolRegistry as any, this.solidService);
+    logger.info('✅ All Solid Pod tools registered.');
   }
 
   private setupRequestHandlers(): void {
@@ -88,21 +93,21 @@ class SolidPodMcpServer {
         throw new Error(`Unknown tool: ${name}`);
       }
 
-      console.error(`--> Received call for tool: ${name}`);
+      logger.info({ tool: name, args }, '--> Received tool call');
       return tool.handler(args || {});
     });
   }
 
   private setupErrorHandling(): void {
     this.server.onerror = (error) => {
-      console.error('[MCP Server Error]', error);
+      logger.error({ err: error }, '[MCP Server Error]');
     };
   }
 
   public async start(): Promise<void> {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('✅ MCP Server started and connected successfully via Stdio.');
+    logger.info('✅ MCP Server started and connected successfully via Stdio.');
   }
 }
 
@@ -112,7 +117,7 @@ async function main() {
     const server = new SolidPodMcpServer();
     await server.start();
   } catch (error) {
-    console.error('Failed to start MCP server:', error);
+    logger.fatal({ err: error }, 'Failed to start MCP server');
     process.exit(1);
   }
 }

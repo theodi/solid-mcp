@@ -1,8 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { SolidCssMcpService, SolidToolError } from '../services/solid.service.js';
+import { SolidCssMcpService, SolidToolError, AccessModes } from '../services/solid.service.js';
+import logger from '../logger.js';
 
 // --- HELPER FOR PARSING ERRORS ---
 function handleSolidError(error: any): { content: [{ type: 'text', text: string }] } {
+  logger.error({ err: error }, 'An error occurred while executing a Solid tool.');
   if (error instanceof SolidToolError) {
     return { content: [{ type: 'text', text: `❌ Error (${error.status}): ${error.message}` }] };
   }
@@ -17,12 +19,11 @@ function handleSolidError(error: any): { content: [{ type: 'text', text: string 
 }
 
 // --- MCP TOOL REGISTRATION FUNCTIONS ---
-// Each function is now correctly exported.
 
 export function registerSolidLoginTool(server: any, service: SolidCssMcpService) {
   server.tool(
     'solid_login',
-    'Logs into a Solid Pod to establish an authenticated session for other tools.',
+    'Logs into a Solid Pod to establish a session. Returns a sessionId that must be used in subsequent calls.',
     {
         type: 'object',
         properties: {
@@ -34,8 +35,8 @@ export function registerSolidLoginTool(server: any, service: SolidCssMcpService)
     },
     async (args: any) => {
       try {
-        await service.authenticate(args.email, args.password, args.oidcIssuer);
-        return { content: [{ type: 'text', text: '✅ Login successful. Session is active.' }] };
+        const sessionId = await service.authenticate(args.email, args.password, args.oidcIssuer);
+        return { content: [{ type: 'text', text: `✅ Login successful. Use this sessionId for other operations: ${sessionId}` }] };
       } catch (error: any) {
         return handleSolidError(error);
       }
@@ -46,15 +47,18 @@ export function registerSolidLoginTool(server: any, service: SolidCssMcpService)
 export function registerReadResourceTool(server: any, service: SolidCssMcpService) {
   server.tool(
     'read_resource',
-    'Reads the content of a resource from the Solid Pod.',
+    'Reads the content of a resource from the Solid Pod using an active session.',
     {
         type: 'object',
-        properties: { resourceUrl: { type: 'string', description: "The full URL of the resource to read." } },
-        required: ['resourceUrl'],
+        properties: { 
+            sessionId: { type: 'string', description: "The active session ID returned from the login tool." },
+            resourceUrl: { type: 'string', description: "The full URL of the resource to read." } 
+        },
+        required: ['sessionId', 'resourceUrl'],
     },
-    async ({ resourceUrl }: any) => {
+    async ({ sessionId, resourceUrl }: any) => {
       try {
-        const content = await service.readResource(resourceUrl);
+        const content = await service.readResource(sessionId, resourceUrl);
         return { content: [{ type: 'text', text: content }] };
       } catch (error: any) {
         return handleSolidError(error);
@@ -66,19 +70,79 @@ export function registerReadResourceTool(server: any, service: SolidCssMcpServic
 export function registerWriteTextResourceTool(server: any, service: SolidCssMcpService) {
   server.tool(
     'write_text_resource',
-    'Writes or overwrites a text-based resource on the Solid Pod.',
+    'Writes or overwrites a text-based resource on the Solid Pod using an active session.',
     {
         type: 'object',
         properties: {
+            sessionId: { type: 'string', description: "The active session ID returned from the login tool." },
             resourceUrl: { type: 'string', description: "The full URL of the resource to write." },
             content: { type: 'string', description: "The text content to write to the file." },
             contentType: { type: 'string', description: "The MIME type (e.g., text/plain)." }
         },
-        required: ['resourceUrl', 'content'],
+        required: ['sessionId', 'resourceUrl', 'content'],
     },
-    async ({ resourceUrl, content, contentType }: any) => {
+    async ({ sessionId, resourceUrl, content, contentType }: any) => {
       try {
-        const result = await service.writeResource(resourceUrl, content, contentType);
+        const result = await service.writeResource(sessionId, resourceUrl, content, contentType);
+        return { content: [{ type: 'text', text: result }] };
+      } catch (error: any) {
+        return handleSolidError(error);
+      }
+    }
+  );
+}
+
+export function registerUpdateRdfResourceTool(server: any, service: SolidCssMcpService) {
+  server.tool(
+    'update_rdf_resource',
+    'Updates a specific data property (predicate) for a specific entry (Thing) within an RDF resource.',
+    {
+        type: 'object',
+        properties: {
+            sessionId: { type: 'string', description: "The active session ID from the login tool." },
+            resourceUrl: { type: 'string', description: "The URL of the RDF file (e.g., profile.ttl)." },
+            thingUrl: { type: 'string', description: "The URL of the specific data entry to update (e.g., '.../profile.ttl#me')." },
+            predicate: { type: 'string', description: "The data property to update (e.g., 'http://xmlns.com/foaf/0.1/name')." },
+            value: { type: 'string', description: "The new string value for the property." }
+        },
+        required: ['sessionId', 'resourceUrl', 'thingUrl', 'predicate', 'value'],
+    },
+    async (args: any) => {
+      try {
+        const result = await service.updateRdfResource(args.sessionId, args.resourceUrl, args.thingUrl, args.predicate, args.value);
+        return { content: [{ type: 'text', text: result }] };
+      } catch (error: any) {
+        return handleSolidError(error);
+      }
+    }
+  );
+}
+
+export function registerGrantAccessTool(server: any, service: SolidCssMcpService) {
+  server.tool(
+    'grant_access',
+    'Grants specific access permissions (read, write, append) for a resource to another person (agent).',
+    {
+      type: 'object',
+      properties: {
+        sessionId: { type: 'string', description: "The active session ID from the login tool." },
+        resourceUrl: { type: 'string', description: "The URL of the resource to share." },
+        agentWebId: { type: 'string', description: "The WebID of the person to grant access to." },
+        access: {
+          type: 'object',
+          properties: {
+            read: { type: 'boolean', description: "Allow read access." },
+            write: { type: 'boolean', description: "Allow write access." },
+            append: { type: 'boolean', description: "Allow append access." }
+          },
+          required: ['read', 'write', 'append']
+        }
+      },
+      required: ['sessionId', 'resourceUrl', 'agentWebId', 'access']
+    },
+    async (args: { sessionId: string; resourceUrl: string; agentWebId: string; access: AccessModes }) => {
+      try {
+        const result = await service.grantAccess(args.sessionId, args.resourceUrl, args.agentWebId, args.access);
         return { content: [{ type: 'text', text: result }] };
       } catch (error: any) {
         return handleSolidError(error);
@@ -90,15 +154,18 @@ export function registerWriteTextResourceTool(server: any, service: SolidCssMcpS
 export function registerListContainerTool(server: any, service: SolidCssMcpService) {
     server.tool(
       'list_container',
-      'Lists all resources within a specified container on the Solid Pod.',
+      'Lists all resources within a specified container on the Solid Pod using an active session.',
       {
           type: 'object',
-          properties: { containerUrl: { type: 'string', description: "The URL of the container to list." } },
-          required: ['containerUrl'],
+          properties: { 
+              sessionId: { type: 'string', description: "The active session ID returned from the login tool." },
+              containerUrl: { type: 'string', description: "The URL of the container to list." } 
+          },
+          required: ['sessionId', 'containerUrl'],
       },
-      async ({ containerUrl }: any) => {
+      async ({ sessionId, containerUrl }: any) => {
         try {
-          const result = await service.listContainer(containerUrl);
+          const result = await service.listContainer(sessionId, containerUrl);
           return { content: [{ type: 'text', text: result }] };
         } catch (error: any) {
           return handleSolidError(error);
@@ -110,15 +177,18 @@ export function registerListContainerTool(server: any, service: SolidCssMcpServi
 export function registerDeleteResourceTool(server: any, service: SolidCssMcpService) {
     server.tool(
       'delete_resource',
-      'Deletes a resource from the Solid Pod.',
+      'Deletes a resource from the Solid Pod using an active session.',
       {
           type: 'object',
-          properties: { resourceUrl: { type: 'string', description: "The full URL of the resource to delete." } },
-          required: ['resourceUrl'],
+          properties: { 
+              sessionId: { type: 'string', description: "The active session ID returned from the login tool." },
+              resourceUrl: { type: 'string', description: "The full URL of the resource to delete." } 
+          },
+          required: ['sessionId', 'resourceUrl'],
       },
-      async ({ resourceUrl }: any) => {
+      async ({ sessionId, resourceUrl }: any) => {
         try {
-          const result = await service.deleteResource(resourceUrl);
+          const result = await service.deleteResource(sessionId, resourceUrl);
           return { content: [{ type: 'text', text: result }] };
         } catch (error: any) {
           return handleSolidError(error);

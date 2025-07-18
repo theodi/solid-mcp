@@ -5,6 +5,8 @@ import {
   buildAuthenticatedFetch,
 } from '@inrupt/solid-client-authn-core';
 import * as solidClient from '@inrupt/solid-client';
+import { randomUUID } from 'crypto';
+import logger from '../logger.js';
 
 // --- TYPE DEFINITIONS ---
 type AuthenticatedFetch = any;
@@ -17,6 +19,12 @@ interface CssAccountApiResponse {
 interface OidcTokenResponse {
   access_token: string;
 }
+export interface AccessModes {
+  read?: boolean;
+  write?: boolean;
+  append?: boolean;
+}
+
 
 // --- CUSTOM ERROR CLASS ---
 export class SolidToolError extends Error {
@@ -30,17 +38,21 @@ export class SolidToolError extends Error {
 
 // --- MAIN SERVICE CLASS ---
 export class SolidCssMcpService {
-  private authFetch: AuthenticatedFetch | null = null;
+  private sessions: Map<string, AuthenticatedFetch> = new Map();
 
-  public getAuthFetch(): AuthenticatedFetch {
-    if (!this.authFetch) {
-      throw new SolidToolError("Not authenticated. Please login first using the 'solid_login' tool.", 401);
+  public getAuthFetch(sessionId: string): AuthenticatedFetch {
+    if (!sessionId) {
+      throw new SolidToolError("A 'sessionId' is required for this operation.", 400);
     }
-    return this.authFetch;
+    const authFetch = this.sessions.get(sessionId);
+    if (!authFetch) {
+      throw new SolidToolError("Invalid or expired session. Please login again.", 401);
+    }
+    return authFetch;
   }
 
-  async authenticate(email: string, password: string, oidcIssuer: string): Promise<AuthenticatedFetch> {
-    console.error('🔷 Authenticating...');
+  async authenticate(email: string, password: string, oidcIssuer: string): Promise<string> {
+    logger.info('🔷 Authenticating...');
     const cssBase = oidcIssuer;
     const indexRes = await fetch(`${cssBase}.account/`);
     const { controls: indexControls } = (await indexRes.json()) as CssAccountApiResponse;
@@ -78,19 +90,21 @@ export class SolidCssMcpService {
       body: 'grant_type=client_credentials&scope=webid',
     });
     const { access_token: accessToken } = (await tokenRes.json()) as OidcTokenResponse;
-    this.authFetch = await buildAuthenticatedFetch(accessToken, { dpopKey });
-    console.error('✅ Authentication complete. Session is active.');
-    return this.authFetch;
+    const authFetch = await buildAuthenticatedFetch(accessToken, { dpopKey });
+    const sessionId = randomUUID();
+    this.sessions.set(sessionId, authFetch);
+    logger.info({ sessionId }, `✅ Authentication complete. New session created.`);
+    return sessionId;
   }
 
-  async readResource(resourceUrl: string): Promise<string> {
-    const authFetch = this.getAuthFetch();
+  async readResource(sessionId: string, resourceUrl: string): Promise<string> {
+    const authFetch = this.getAuthFetch(sessionId);
     const file = await solidClient.getFile(resourceUrl, { fetch: authFetch });
     return file.text();
   }
 
-  async writeResource(resourceUrl: string, content: string, contentType: string = 'text/plain'): Promise<string> {
-    const authFetch = this.getAuthFetch();
+  async writeResource(sessionId: string, resourceUrl: string, content: string, contentType: string = 'text/plain'): Promise<string> {
+    const authFetch = this.getAuthFetch(sessionId);
     await solidClient.overwriteFile(
       resourceUrl,
       new Blob([content], { type: contentType }),
@@ -99,16 +113,37 @@ export class SolidCssMcpService {
     return `✅ Successfully wrote to ${resourceUrl}`;
   }
 
-  async listContainer(containerUrl: string): Promise<string> {
-    const authFetch = this.getAuthFetch();
+  async listContainer(sessionId: string, containerUrl: string): Promise<string> {
+    const authFetch = this.getAuthFetch(sessionId);
     const containerDataset = await solidClient.getSolidDataset(containerUrl, { fetch: authFetch });
     const containedResources = solidClient.getContainedResourceUrlAll(containerDataset);
     return `Resources in ${containerUrl}:\n${containedResources.join('\n')}`;
   }
 
-  async deleteResource(resourceUrl: string): Promise<string> {
-    const authFetch = this.getAuthFetch();
+  async deleteResource(sessionId: string, resourceUrl: string): Promise<string> {
+    const authFetch = this.getAuthFetch(sessionId);
     await solidClient.deleteFile(resourceUrl, { fetch: authFetch });
     return `✅ Successfully deleted ${resourceUrl}`;
+  }
+
+  async updateRdfResource(sessionId: string, resourceUrl: string, thingUrl: string, predicate: string, value: string): Promise<string> {
+    const authFetch = this.getAuthFetch(sessionId);
+    let dataset = await solidClient.getSolidDataset(resourceUrl, { fetch: authFetch });
+    let thing = solidClient.getThing(dataset, thingUrl) ?? solidClient.createThing({ url: thingUrl });
+    thing = solidClient.setStringNoLocale(thing, predicate, value);
+    dataset = solidClient.setThing(dataset, thing);
+    await solidClient.saveSolidDatasetAt(resourceUrl, dataset, { fetch: authFetch });
+    return `✅ Successfully updated property '${predicate}' in ${resourceUrl}`;
+  }
+
+  async grantAccess(sessionId: string, resourceUrl: string, agentWebId: string, access: AccessModes): Promise<string> {
+    const authFetch = this.getAuthFetch(sessionId);
+    await solidClient.universalAccess.setAgentAccess(
+      resourceUrl,
+      agentWebId,
+      access,
+      { fetch: authFetch }
+    );
+    return `✅ Access permissions updated for ${agentWebId} on ${resourceUrl}.`;
   }
 }
