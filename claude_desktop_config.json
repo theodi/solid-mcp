@@ -1,8 +1,15 @@
 {
   "mcpServers": {
     "solid_pod_tools": {
+<<<<<<< HEAD
       "command": "/Users/kwaku/.nvm/versions/node/v20.16.0/bin/node",
       "args": ["/Users/kwaku/solid-mcp-latest/dist/server.js"],
+=======
+      "command": "node",
+      "args": [
+        "/Users/kwaku/solid-mcp-latest/dist/server.js" 
+      ],
+>>>>>>> 8179ed2ca27467143c3161025c1cef40b1631126
       "options": {
         "cwd": "/Users/kwaku/solid-mcp-latest"
       }
