@@ -58,8 +58,6 @@ describe('SolidCssMcpService', () => {
     } as any);
 
     const sessionId = await service.authenticate(
-      'test@example.com',
-      'password',
       'http://localhost:3000/'
     );
 
@@ -79,8 +77,6 @@ describe('SolidCssMcpService', () => {
 
     await expect(
       service.authenticate(
-        'test@example.com',
-        'password',
         'http://localhost:3000/'
       )
     ).rejects.toThrow();
