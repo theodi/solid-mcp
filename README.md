@@ -5,6 +5,30 @@ This service acts as a secure bridge between a large language model (LLM), such 
 
 The core architecture separates the client (the Claude AI Desktop app) from the secure data store (the Solid Pod). The MCP server is the trusted backend that manages the authenticated session and handles all direct communication with the pod, ensuring that no sensitive credentials are ever exposed to the front-end or the AI model itself.
 
+## server.ts – Main Server Entry Point
+
+The `server.ts` file is the main entry point for the Solid Pod MCP service. It is responsible for:
+
+- Loading environment variables (including credentials and API keys) using `dotenv`.
+- Initialising the Solid service and tool registry.
+- Registering all available Solid Pod tools (such as login, read, write, update, grant access, etc.) with the MCP server.
+- Setting up request handlers for tool listing and tool invocation, routing requests to the correct tool handler.
+- Handling errors and logging using the provided logger.
+- Starting the MCP server using the Model Context Protocol SDK and connecting via the Stdio transport, which allows integration with the Claude AI Desktop application or other MCP-compatible clients.
+
+The server is designed for extensibility and security, ensuring that all tool calls are properly routed and that sensitive operations are handled on the backend. If you wish to customise the server (for example, to add new tools or change logging behaviour), you can do so by editing `src/server.ts` and the relevant tool registration files.
+
+To run the server, simply execute:
+```
+npm start
+```
+or, if running directly:
+```
+node dist/server.js
+```
+
+The server will automatically load environment variables from your `.env` file and begin listening for MCP tool requests via standard input/output.
+
 ## Prerequisites & Setup
 
 Before running this service, ensure the following are in place:
@@ -146,6 +170,18 @@ Delete the file at http://localhost:3000/kwaku/private/ai-note.txt using my sess
 ## Security
 - Credentials are never exposed to the AI or front-end; all authentication is handled securely on the backend.
 - Sessions are automatically cleaned up after expiry.
+
+## Logging
+
+This project uses the [Pino](https://getpino.io/#/) logging library for all server and tool logging. Logs are configured to be written to **stderr** (standard error), which ensures that diagnostic and informational logs do not interfere with the JSON-RPC protocol communication on **stdout** (standard output). This is particularly important for compatibility with the Claude AI Desktop application and other MCP-compatible clients.
+
+- **Default log level:** `info` (can be changed in `src/logger.ts`)
+- **Log output:** All logs are sent to stderr by default.
+- **Purpose:** Keeping logs separate from protocol output prevents corruption of the data stream between the MCP server and clients.
+
+If you wish to customise logging (for example, to change the log level or output destination), you can edit the configuration in `src/logger.ts`. For more advanced options, refer to the [Pino documentation](https://getpino.io/#/).
+
+Logging is used throughout the codebase, including in all major operations and error handling (even within try/catch blocks), to provide clear diagnostics and traceability.
 
 ---
 For further details, see the code in `src/services/solid.service.ts` and `src/tools/solid.tools.ts`.
