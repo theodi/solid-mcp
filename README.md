@@ -183,6 +183,37 @@ If you wish to customise logging (for example, to change the log level or output
 
 Logging is used throughout the codebase, including in all major operations and error handling (even within try/catch blocks), to provide clear diagnostics and traceability.
 
+## Testing & Test Scope
+
+This project includes both unit and integration tests to ensure reliability and maintainability.
+
+### Running Tests
+
+To run all tests, use:
+```
+npm test
+```
+
+### Test Types
+- **Unit tests** (in `src/services/solid.service.test.ts`):
+  - Cover all public methods of the core service (`SolidCssMcpService`).
+  - Use comprehensive mocking for all external dependencies (Solid client, authentication, network, etc.).
+  - Test both success and error/edge cases, including environment variable handling and session management.
+  - Assertions are made on returned values, thrown errors, and correct behaviour for all scenarios.
+
+- **Integration tests** (in `__tests__/main-test.ts`):
+  - Start the actual server and test the end-to-end flow, including tool registration and invocation.
+  - Simulate real tool calls (e.g., `solid_login`) and assert on the server's responses.
+  - Ensure the server works as expected in a real environment, with environment variables set.
+
+### Scope
+- All public service methods are tested, including authentication, resource reading/writing, container listing, RDF updates, and access grants.
+- Integration tests verify the server's ability to register tools and handle requests via the Model Context Protocol.
+- Mocking is used extensively in unit tests to isolate logic and avoid network or external service dependencies.
+- Tests use British English in comments and messages for consistency.
+
+For more details, see the test files in `src/services/` and `__tests__/`.
+
 ---
 For further details, see the code in `src/services/solid.service.ts` and `src/tools/solid.tools.ts`.
 
