@@ -1,4 +1,3 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SolidCssMcpService, SolidToolError, AccessModes } from '../services/solid.service.js';
 import logger from '../logger.js';
 
@@ -10,7 +9,7 @@ function handleSolidError(error: any): { content: [{ type: 'text', text: string 
   }
   if (error.statusCode) {
     let message = `❌ A Solid error occurred (${error.statusCode}).`;
-    if (error.statusCode === 401) message += " Unauthorized. Your session may have expired.";
+    if (error.statusCode === 401) message += " Unauthorized. The resource may be private, or your session may be invalid/expired.";
     if (error.statusCode === 403) message += " Forbidden. You may not have permission for this action.";
     if (error.statusCode === 404) message += " Resource not found.";
     return { content: [{ type: 'text', text: message }] };
@@ -23,25 +22,48 @@ function handleSolidError(error: any): { content: [{ type: 'text', text: string 
 export function registerSolidLoginTool(server: any, service: SolidCssMcpService) {
   server.tool(
     'solid_login',
-    'Logs into a Solid Pod to establish a session. Returns a sessionId that must be used in subsequent calls.',
+    'Logs into a Solid Pod using credentials from secure environment config. Returns a sessionId.',
     {
         type: 'object',
         properties: {
-            email: { type: 'string', description: "The account email for the Solid Pod." },
-            password: { type: 'string', description: "The account password for the Solid Pod." },
             oidcIssuer: { type: 'string', description: "The OIDC Issuer URL (e.g., http://localhost:3000/)." }
         },
-        required: ['email', 'password', 'oidcIssuer'],
+        required: ['oidcIssuer'],
     },
     async (args: any) => {
       try {
-        const sessionId = await service.authenticate(args.email, args.password, args.oidcIssuer);
+        const sessionId = await service.authenticate(args.oidcIssuer);
         return { content: [{ type: 'text', text: `✅ Login successful. Use this sessionId for other operations: ${sessionId}` }] };
       } catch (error: any) {
         return handleSolidError(error);
       }
     }
   );
+}
+
+export function registerDiscoverPodTool(server: any, service: SolidCssMcpService) {
+    server.tool(
+      'discover_pod_storage',
+      'Discovers the root storage URL of a Solid Pod from a given WebID. Can use a session to see private profiles.',
+      {
+          type: 'object',
+          properties: {
+              webId: { type: 'string', description: "The WebID of the user (e.g., https://pod.example.com/profile/card#me)." },
+              // CHANGED: Added optional sessionId to the schema
+              sessionId: { type: 'string', description: "Optional: The active session ID to discover from a private WebID profile." }
+          },
+          required: ['webId'],
+      },
+      // CHANGED: The handler now accepts sessionId and passes it to the service
+      async ({ webId, sessionId }: any) => {
+        try {
+          const podUrl = await service.discoverPod(webId, sessionId);
+          return { content: [{ type: 'text', text: `✅ Pod storage found: ${podUrl}` }] };
+        } catch (error: any) {
+          return handleSolidError(error);
+        }
+      }
+    );
 }
 
 export function registerReadResourceTool(server: any, service: SolidCssMcpService) {
@@ -165,8 +187,12 @@ export function registerListContainerTool(server: any, service: SolidCssMcpServi
       },
       async ({ sessionId, containerUrl }: any) => {
         try {
-          const result = await service.listContainer(sessionId, containerUrl);
-          return { content: [{ type: 'text', text: result }] };
+          const resourceUrls = await service.listContainer(sessionId, containerUrl);
+          if (resourceUrls.length === 0) {
+            return { content: [{ type: 'text', text: `The container ${containerUrl} is empty.`}] };
+          }
+          const formattedText = `Resources in ${containerUrl}:\n${resourceUrls.join('\n')}`;
+          return { content: [{ type: 'text', text: formattedText }] };
         } catch (error: any) {
           return handleSolidError(error);
         }

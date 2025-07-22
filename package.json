@@ -20,6 +20,7 @@
   "dependencies": {
     "@inrupt/solid-client": "^2.0.0",
     "@inrupt/solid-client-authn-node": "^2.0.0",
+    "@inrupt/vocab-common-rdf": "^1.0.5",
     "@modelcontextprotocol/sdk": "^1.15.0",
     "axios": "^1.7.2",
     "dotenv": "^16.4.5",

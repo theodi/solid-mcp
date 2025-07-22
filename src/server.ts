@@ -1,4 +1,12 @@
-import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+import dotenv from 'dotenv';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, '..'); 
+dotenv.config({ path: path.join(projectRoot, '.env') });
+
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -15,6 +23,7 @@ import {
   registerDeleteResourceTool,
   registerUpdateRdfResourceTool,
   registerGrantAccessTool,
+  registerDiscoverPodTool,
 } from './tools/solid.tools.js';
 import logger from './logger.js';
 
@@ -52,7 +61,7 @@ class SolidPodMcpServer {
     this.server = new Server(
       {
         name: 'solid-pod-tools-server',
-        version: '1.0.2',
+        version: '1.0.3', // Incremented version
       },
       {
         capabilities: {
@@ -69,6 +78,7 @@ class SolidPodMcpServer {
   private registerAllTools(): void {
     logger.info('🔷 Registering Solid Pod tools...');
     registerSolidLoginTool(this.toolRegistry as any, this.solidService);
+    registerDiscoverPodTool(this.toolRegistry as any, this.solidService);
     registerReadResourceTool(this.toolRegistry as any, this.solidService);
     registerWriteTextResourceTool(this.toolRegistry as any, this.solidService);
     registerListContainerTool(this.toolRegistry as any, this.solidService);

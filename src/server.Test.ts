@@ -78,7 +78,7 @@ class SolidPodMcpServer {
           try {
             // Type assertion to help TypeScript understand the arguments
             const loginArgs = args as { email: string; password: string; oidcIssuer: string };
-            await this.solidService.authenticate(loginArgs.email, loginArgs.password, loginArgs.oidcIssuer);
+            await this.solidService.authenticate(loginArgs.oidcIssuer);
             return {
               content: [{ type: 'text', text: '✅ Login successful. Session is active.' }],
             };
