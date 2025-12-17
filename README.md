@@ -1,5 +1,7 @@
 # Solid Pod MCP Service
 
+> ⚠️ **Warning:** This project is currently for demonstrative purposes only. It is not intended for production use.
+
 ## Overview
 This service acts as a secure bridge between a large language model (LLM), such as Claude, and a personal Solid Pod. It exposes a set of callable tools over the Model Context Protocol (MCP), allowing an AI agent to perform complex operations on a Solid Pod—such as authentication, reading data, writing files, managing permissions, and updating structured data—through simple, natural language commands.
 
