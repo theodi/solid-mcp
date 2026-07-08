@@ -42,7 +42,7 @@
     "pre-commit": "^2.0.0",
     "semantic-release": "^25.0.5",
     "ts-jest": "^29.4.11",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "jest": {
     "preset": "ts-jest",
