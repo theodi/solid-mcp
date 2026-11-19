@@ -40,7 +40,7 @@
     "eslint-plugin-import": "^2.32.0",
     "jest": "^30.5.2",
     "pre-commit": "^2.0.0",
-    "semantic-release": "^25.0.9",
+    "semantic-release": "^26.0.1",
     "ts-jest": "^29.4.15",
     "typescript": "^7.0.2"
   },
